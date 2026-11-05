@@ -572,7 +572,10 @@ function explode(i){
   const now = performance.now();
   if (live() && now-lastBoom > 90){ lastBoom = now; boom((m.x/W)*2-1); }
   // a fresh molecule drifts in from an edge a few seconds later
-  setTimeout(() => { const e = Math.floor(rnd(4)); addMol(e===0?10:e===1?W-10:rnd(W), e===2?10:e===3?H-10:rnd(H)); }, rnd(1500,4500));
+  setTimeout(() => { const e = Math.floor(rnd(4)), x = e===0?14:e===1?W-14:rnd(W), y = e===2?14:e===3?H-14:rnd(H);
+    addMol(x, y); const nm = mols[mols.length-1];
+    if (nm && nm.x===x){ nm.born = performance.now(); nm.glow = 1; nm.vx = (W/2-x)*0.25; nm.vy = (H/2-y)*0.25; ripple(x,y,nm.deg,1.2); }
+  }, rnd(1500,4500));
 }
 function stepSparks(dt){
   for (let i=sparks.length-1;i>=0;i--){ const p = sparks[i];
@@ -677,6 +680,7 @@ function draw(){
   // wedge molecules: wide + end, narrow − end
   for (const m of mols){
     g.save(); g.translate(m.x,m.y); g.rotate(m.a);
+    if (m.born){ const k = (performance.now()-m.born)/450; if (k >= 1) m.born = 0; else g.scale(0.2+0.8*k, 0.2+0.8*k); }
     g.fillStyle = degColor(m.deg, 58 + m.glow*20);
     g.beginPath(); g.moveTo(HALF,-6); g.lineTo(HALF,6); g.lineTo(-HALF,2.5); g.lineTo(-HALF,-2.5); g.closePath(); g.fill();
     g.fillStyle = m.plus ? '#f3ecdd' : '#ff6a3d'; g.fillRect(HALF-2.5,-2.5,5,5);
@@ -1010,7 +1014,7 @@ const CREDITS = [
   ['makeymakey-midi',null,'Every note can go out over MIDI.'],
   ['makeymakey-capsense-keyboard',null,'Hovering a bell rings it, no click needed (touch without ground).'],
   ['list-app','do-today','The Do today checklist.'],
-  ['Space-battle',null,'Laser ships that blow up molecules in their path (new ones drift back in).'],
+  ['Space-battle',null,'Laser ships that blow up molecules in their path; each one pops back in from an edge a few seconds later.'],
   ['Transmogrifier',null,'One button that remixes every setting at once.'],
   ['together-apart',null,'The duet pads, panned hard left and right.'],
   ['scratch-gui-1','scratch-vm-1','Arrow keys and Space, the classic Scratch and Makey Makey inputs.'],
