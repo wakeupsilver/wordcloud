@@ -29,15 +29,15 @@ Press **Start the sound**, then:
 | wonderkey | Each key triggers a random slice of the sample at one pitch |
 | duet-instrument, together-apart | Two mirrored rows of seven pentatonic pads, panned left/right |
 | tone-synth-extension | Synth settings + the bouncing synth ball |
-| scratch-extensions (BeetleBlocks) | A wandering beetle that leaves blocks and lays bells |
+| scratch-extensions (BeetleBlocks) | An always-on wandering beetle that leaves blocks and lays bells |
 | color-key | Colors → chords |
-| user-count-extension | "Bonded right now" counter + an airhorn every 20 bonds |
-| spotify-extension | Its examples were cowbell remixes → a beat stepper with **More cowbell** |
+| user-count-extension | "Bonded right now" counter + a rare airhorn on big bond milestones |
+| spotify-extension | Its examples were cowbell remixes → a beat stepper that runs as the backdrop, with **More cowbell** |
 | freesound-extension | Load any sound file into the sampler |
 | makeymakey-midi | MIDI out for every note |
 | makeymakey-capsense-keyboard | Hovering a bell rings it (touch without ground) |
 | list-app, do-today | The "Do today" checklist (checking one off spawns molecules) |
-| Space-battle | Laser ship that breaks bonds |
+| Space-battle | Laser ships that fly by every few seconds and break bonds |
 | Transmogrifier | One button that remixes every setting |
 | wordcloud (this repo) | Typed/spoken words float in and grow with repetition |
 

@@ -376,7 +376,9 @@ function resize(){
 new ResizeObserver(resize).observe(cvs); resize();
 
 const mols = [], bells = [], words = [], ripples = [], trail = [];
-let beetle = {x:120,y:120,h:0.4,drop:6}, ball = null, ship = null, bgTint = 250;
+let beetle = {x:120,y:120,h:0.4,drop:6}, ball = null, bgTint = 250;
+const ships = [];
+let shipTimer = 2.5, gravTimer = 8;
 const HALF = 11; // half-length of a wedge
 let noteBudget = 0;
 
@@ -453,6 +455,8 @@ function step(dt){
       }
     }
   }
+  gravTimer -= dt;
+  if (gravTimer < 0){ S.gravity = !S.gravity; gravTimer = S.gravity ? rnd(3,7) : rnd(6,13); syncUI(); if (live()) toast(S.gravity ? 'Gravity on. Everything falls.' : 'Gravity off. Back to floating.'); }
   stepBeetle(dt, now); stepBall(dt, now); stepShip(dt); stepWords(dt);
 }
 
@@ -501,11 +505,15 @@ function stepBall(dt, now){
 /* ---------------- laser ship (Space-battle) ---------------- */
 function launchShip(){
   const fromLeft = Math.random()<0.5;
-  ship = {x: fromLeft?-30:W+30, y: rnd(40,H-40), vx: fromLeft?260:-260, fire:0};
-  toast('Space battle! The laser breaks bonds.');
+  if (ships.length >= 4) return;
+  ships.push({x: fromLeft?-30:W+30, y: rnd(40,H-40), vx: (fromLeft?1:-1)*rnd(220,340), fire:0});
 }
 function stepShip(dt){
-  if (!ship) return;
+  shipTimer -= dt;
+  if (shipTimer < 0){ shipTimer = rnd(2.5,6); launchShip(); if (Math.random()<0.3) setTimeout(launchShip, 400); }
+  for (let si=ships.length-1; si>=0; si--) stepOneShip(ships[si], si, dt);
+}
+function stepOneShip(ship, si, dt){
   ship.x += ship.vx*dt; ship.fire -= dt;
   if (ship.fire < 0){ ship.fire = 0.18; pew((ship.x/W)*2-1); }
   for (const m of mols){
@@ -513,7 +521,7 @@ function stepShip(dt){
       breakBond(m); if (m.minus) breakBond(m.minus); m.vy += (m.y<ship.y?-1:1)*300*dt*10; m.glow = 1;
     }
   }
-  if (ship.x < -60 || ship.x > W+60) ship = null;
+  if (ship.x < -60 || ship.x > W+60) ships.splice(si,1);
 }
 
 /* ---------------- word cloud ---------------- */
@@ -547,6 +555,20 @@ function stepWords(dt){
 /* ---------------- drawing ---------------- */
 function draw(){
   g.fillStyle = `hsl(${bgTint} 22% 9%)`; g.fillRect(0,0,W,H);
+  // beat stepper as the backdrop: 16 columns x 4 rows, playhead column lit
+  { const cw = W/16, rh = H/ROWS.length;
+    ROWS.forEach((r,ri) => { for (let i=0;i<16;i++){
+      const on = pattern[r][i], now = i===shownStep;
+      if (!on && !now) continue;
+      const a = on ? (now ? 0.34 : 0.075) : 0.035;
+      g.fillStyle = on ? degColor(ri*2,55,a) : `rgba(243,236,221,${a})`;
+      g.fillRect(i*cw+2, ri*rh+2, cw-4, rh-4);
+    }});
+    g.fillStyle = 'rgba(170,160,194,0.06)';
+    for (let i=4;i<16;i+=4) g.fillRect(i*cw-1,0,2,H);
+    g.font = '600 10px "IBM Plex Mono", monospace'; g.textAlign = 'left'; g.textBaseline = 'top';
+    ROWS.forEach((r,ri) => { g.fillStyle = 'rgba(170,160,194,0.35)'; g.fillText(r, 8, ri*rh+8); });
+  }
   // faint dot grid: the assembly floor
   g.fillStyle = 'rgba(170,160,194,0.08)';
   for (let x=20;x<W;x+=40) for (let y=20;y<H;y+=40) g.fillRect(x,y,1.5,1.5);
@@ -596,12 +618,12 @@ function draw(){
   if (ball){ g.fillStyle = degColor(ball.deg,60); g.beginPath(); g.arc(ball.x,ball.y,ball.r,0,Math.PI*2); g.fill();
     g.fillStyle='rgba(255,255,255,0.35)'; g.beginPath(); g.arc(ball.x-6,ball.y-7,6,0,Math.PI*2); g.fill(); }
   // ship + laser
-  if (ship){ const dir = Math.sign(ship.vx);
+  for (const ship of ships){ const dir = Math.sign(ship.vx);
     g.strokeStyle = 'rgba(255,106,61,0.85)'; g.lineWidth = 3; g.beginPath(); g.moveTo(ship.x+dir*16,ship.y); g.lineTo(ship.x+dir*200,ship.y); g.stroke();
     g.fillStyle = '#f3ecdd'; g.beginPath(); g.moveTo(ship.x+dir*16,ship.y); g.lineTo(ship.x-dir*12,ship.y-10); g.lineTo(ship.x-dir*6,ship.y); g.lineTo(ship.x-dir*12,ship.y+10); g.closePath(); g.fill(); }
 }
 
-let last = performance.now(), airArmed = 20, lastHorn = 0;
+let last = performance.now(), airArmed = 40, lastHorn = -60000;
 function frame(now){
   const dt = Math.min(0.033, (now-last)/1000); last = now;
   noteBudget = Math.min(3, noteBudget + dt*6);
@@ -609,8 +631,8 @@ function frame(now){
   const bc = bondCount();
   if (frame.n++ % 10 === 0){ $('#bondCount').textContent = bc; }
   // squirrel airhorn user-counter: crossing each 20 bonds sounds the horn
-  if (bc >= airArmed){ airArmed = (Math.floor(bc/20)+1)*20; if (live() && now-lastHorn > 6000){ lastHorn = now; airhorn(); flashBanner('AIRHORN'); } }
-  else if (bc < airArmed-30 && airArmed > 20) airArmed -= 20;
+  if (bc >= airArmed){ airArmed = (Math.floor(bc/40)+1)*40; if (live() && now-lastHorn > 90000){ lastHorn = now; airhorn(); flashBanner('AIRHORN'); } }
+  else if (bc < airArmed-60 && airArmed > 40) airArmed -= 40;
   requestAnimationFrame(frame);
 }
 frame.n = 0;
@@ -867,7 +889,7 @@ function updateMeters(){ $('#bellCount').textContent = bells.length; }
 function transmogrify(){
   S.scale = pick(Object.keys(SCALES)); S.root = Math.floor(rnd(48,63)); S.wave = pick(['triangle','sine','square','sawtooth']);
   S.ring = pick([0,5,6,8,10]); S.temp = +rnd(0.15,1.2).toFixed(2); S.gravity = Math.random()<0.3;
-  S.echo = +rnd(0,0.6).toFixed(2); S.beetle = Math.random()<0.75; S.ball = Math.random()<0.4; S.bpm = Math.floor(rnd(80,150));
+  S.echo = +rnd(0,0.6).toFixed(2); S.beetle = true; S.ball = Math.random()<0.4; S.bpm = Math.floor(rnd(80,150));
   bgTint = rnd(360);
   ROWS.forEach(r => pattern[r].forEach((_,i) => { pattern[r][i] = Math.random() < ({kick:0.28,hat:0.4,clap:0.15,cowbell:0.2})[r] ? 1 : 0; stepEls[r][i].classList.toggle('on', !!pattern[r][i]); }));
   syncUI(); shock();
@@ -897,7 +919,7 @@ const CREDITS = [
   ['tone-synth-extension',null,'Synth settings and the bouncing synth ball.'],
   ['scratch-extensions','BeetleBlocks','The wandering beetle that leaves blocks and lays bells.'],
   ['color-key',null,'Colors become chords; K samples the color under the cursor.'],
-  ['user-count-extension',null,'The live "bonded right now" counter, and the squirrel airhorn at every 20.'],
+  ['user-count-extension',null,'The live "bonded right now" counter, and a rare squirrel airhorn on big milestones.'],
   ['spotify-extension',null,'Its example projects were cowbell remixes, hence More cowbell.'],
   ['freesound-extension',null,'Load any sound file into the sampler.'],
   ['makeymakey-midi',null,'Every note can go out over MIDI.'],
@@ -927,6 +949,7 @@ $('#startBtn').onclick = async () => {
   if (!AC) initAudio();
   try { await AC.resume(); } catch(e){}
   $('#overlay').hidden = true;
+  if (!beatOn) $('#beatBtn').onclick();
   playNote(degToMidi(0),{vel:0.4,bell:true}); setTimeout(() => playNote(degToMidi(4),{vel:0.4,bell:true}),120); setTimeout(() => playNote(degToMidi(7),{vel:0.4,bell:true}),240);
   toast('Sound on. Tap the floor to drop bells.');
 };
