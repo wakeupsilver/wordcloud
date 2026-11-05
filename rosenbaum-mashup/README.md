@@ -29,7 +29,7 @@ Press **Start the sound**, then:
 | wonderkey | Each key triggers a random slice of the sample at one pitch |
 | duet-instrument, together-apart | Two mirrored rows of seven pentatonic pads, panned left/right |
 | tone-synth-extension | Synth settings + bouncing synth balls that drop in now and then |
-| scratch-extensions (BeetleBlocks) | An always-on wandering beetle that leaves blocks and lays bells |
+| scratch-extensions (BeetleBlocks) | A swarm of bugs (beetles, ladybugs, fireflies that blink notes, stag beetles that shove molecules) that leave blocks and lay bells |
 | color-key | Colors → chords |
 | user-count-extension | "Bonded right now" counter + a rare airhorn on big bond milestones |
 | spotify-extension | Its examples were cowbell remixes → a beat stepper that runs as the backdrop, with **More cowbell** |

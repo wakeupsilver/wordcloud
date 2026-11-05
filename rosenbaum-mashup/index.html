@@ -116,7 +116,8 @@ ul.todo button{margin-left:auto;background:none;border:0;color:var(--dim);cursor
           <button class="btn" id="gravity">Gravity</button>
         </div>
         <div class="rowf">
-          <button class="btn on" id="beetleBtn">Beetle</button>
+          <button class="btn on" id="beetleBtn">Bugs</button>
+          <button class="btn" id="addBug">Add a bug</button>
           <button class="btn" id="ballBtn">Synth ball</button>
           <button class="btn" id="laserBtn">Laser ship</button>
           <button class="btn" id="clearBells">Clear bells</button>
@@ -379,7 +380,8 @@ function resize(){
 new ResizeObserver(resize).observe(cvs); resize();
 
 const mols = [], bells = [], words = [], ripples = [], trail = [];
-let beetle = {x:120,y:120,h:0.4,drop:6}, bgTint = 250;
+let bgTint = 250;
+const bugs = [];
 const balls = [];
 let ballTimer = 5;
 const ships = [];
@@ -475,20 +477,55 @@ function ringBell(b, vel=0.5){
 }
 function bellAt(x,y){ for (let i=bells.length-1;i>=0;i--){ const b=bells[i]; if (Math.hypot(x-b.x,y-b.y) < b.r+6) return b; } return null; }
 
-/* ---------------- beetle (BeetleBlocks) ---------------- */
+/* ---------------- bugs (BeetleBlocks beetle + friends) ---------------- */
+const BUG_KINDS = ['beetle','beetle','ladybug','firefly','stag'];
+function addBug(kind=pick(BUG_KINDS), x=rnd(30,Math.max(31,W-30)), y=rnd(30,Math.max(31,H-30))){
+  if (bugs.length >= 16) return null;
+  const hue = kind==='ladybug' ? 6 : kind==='firefly' ? 58 : pick([176,140,270,30,200]);
+  const bug = {kind, x, y, h:rnd(Math.PI*2), hue, s: kind==='stag'?1.25: kind==='firefly'?0.75:rnd(0.8,1.1),
+    speed: kind==='firefly'?70: kind==='stag'?30:rnd(38,56), drop:rnd(8,30), legs:rnd(6), blink:rnd(2,6), glow:0};
+  bugs.push(bug); return bug;
+}
 function stepBeetle(dt, now){
   if (!S.beetle) return;
-  const B = beetle;
-  B.h += (Math.random()-0.5)*2.2*dt + Math.sin(now/1300)*0.6*dt;
-  B.x += Math.cos(B.h)*46*dt; B.y += Math.sin(B.h)*46*dt;
-  if (B.x<20||B.x>W-20) { B.h = Math.PI - B.h; B.x = clamp(B.x,20,W-20); }
-  if (B.y<20||B.y>H-20) { B.h = -B.h; B.y = clamp(B.y,20,H-20); }
-  if (!trail.length || Math.hypot(trail[trail.length-1].x-B.x, trail[trail.length-1].y-B.y) > 9){
-    trail.push({x:B.x,y:B.y,life:1,deg:bellDeg(B.y)}); if (trail.length>260) trail.shift();
+  for (const B of bugs){
+    B.h += (Math.random()-0.5)*(B.kind==='firefly'?4:2.2)*dt + Math.sin(now/1300 + B.hue)*0.6*dt;
+    B.x += Math.cos(B.h)*B.speed*dt; B.y += Math.sin(B.h)*B.speed*dt; B.legs += dt*B.speed*0.35;
+    if (B.x<20||B.x>W-20) { B.h = Math.PI - B.h; B.x = clamp(B.x,20,W-20); }
+    if (B.y<20||B.y>H-20) { B.h = -B.h; B.y = clamp(B.y,20,H-20); }
+    if (B.kind !== 'firefly'){
+      const tl = B.tl;
+      if (!tl || Math.hypot(tl.x-B.x, tl.y-B.y) > 9){ B.tl = {x:B.x,y:B.y,life:1,hue:B.hue}; trail.push(B.tl); if (trail.length>600) trail.shift(); }
+    }
+    // fireflies blink a soft high note; stag beetles shove molecules aside
+    B.glow *= 0.93; B.blink -= dt;
+    if (B.kind==='firefly' && B.blink < 0){ B.blink = rnd(2.5,7); B.glow = 1;
+      playNote(degToMidi(Math.floor(rnd(10,15))), {vel:0.14, dur:0.12, wave:'sine', pan:(B.x/W)*2-1}); ripple(B.x,B.y,3,0.8); }
+    if (B.kind==='stag') for (const m of mols){ const dx=m.x-B.x, dy=m.y-B.y, d=Math.hypot(dx,dy); if (d<20&&d>0){ m.vx+=dx/d*90; m.vy+=dy/d*90; } }
+    B.drop -= dt;
+    if (B.drop < 0){ B.drop = rnd(18,40); const b = addBell(B.x,B.y); ringBell(b,0.3); if (Math.random()<0.3) toast(`A ${B.kind==='stag'?'stag beetle':B.kind} laid a bell.`); }
+    const hit = bellAt(B.x,B.y); if (hit && now-hit.last > 700) ringBell(hit,0.25);
   }
-  B.drop -= dt;
-  if (B.drop < 0){ B.drop = rnd(7,13); const b = addBell(B.x,B.y); ringBell(b,0.35); toast('The beetle laid a bell.'); }
-  const hit = bellAt(B.x,B.y); if (hit && now-hit.last > 700) ringBell(hit,0.3);
+}
+function drawBug(B){
+  const sc = B.s, wig = Math.sin(B.legs)*1.6;
+  g.save(); g.translate(B.x,B.y); g.rotate(B.h); g.scale(sc,sc);
+  const body = `hsl(${B.hue} 75% ${B.kind==='firefly' ? 45+B.glow*35 : 55}%)`;
+  if (B.kind==='firefly'){
+    g.fillStyle = `hsl(58 100% 70% / ${0.15+B.glow*0.55})`; g.beginPath(); g.arc(-4,0,10+B.glow*10,0,Math.PI*2); g.fill();
+  }
+  g.strokeStyle = body; g.lineWidth = 1.5;
+  for (const sd of [-1,1]) for (const [i,x] of [-5,0,5].entries()){
+    const w = (i%2 ? wig : -wig)*sd; g.beginPath(); g.moveTo(x,sd*5); g.lineTo(x-2+w,sd*11); g.stroke(); }
+  g.fillStyle = body; g.beginPath(); g.ellipse(0,0,10,7,0,0,Math.PI*2); g.fill();
+  g.fillStyle = '#15131f';
+  if (B.kind==='ladybug'){ g.fillRect(-10,-0.6,20,1.2); for (const [dx,dy] of [[-4,-3.5],[2,-3.5],[-4,3.5],[2,3.5],[-1,0]]){ g.beginPath(); g.arc(dx,dy,1.5,0,Math.PI*2); g.fill(); } }
+  else if (B.kind!=='firefly') g.fillRect(-10,-0.75,20,1.5);
+  g.beginPath(); g.arc(10,0,3.5,0,Math.PI*2); g.fill();
+  if (B.kind==='stag'){ g.strokeStyle = body; g.lineWidth = 2;
+    for (const sd of [-1,1]){ g.beginPath(); g.moveTo(12,sd*2); g.quadraticCurveTo(19,sd*6,20,sd*1); g.stroke(); } }
+  if (B.kind==='firefly'){ g.strokeStyle = 'rgba(243,236,221,0.5)'; g.lineWidth = 1; g.beginPath(); g.ellipse(-1,-6,6,3,-0.4,0,Math.PI*2); g.ellipse(-1,6,6,3,0.4,0,Math.PI*2); g.stroke(); }
+  g.restore();
 }
 
 /* ---------------- bouncing synth ball (tone-synth) ---------------- */
@@ -591,7 +628,7 @@ function draw(){
   g.fillStyle = 'rgba(170,160,194,0.08)';
   for (let x=20;x<W;x+=40) for (let y=20;y<H;y+=40) g.fillRect(x,y,1.5,1.5);
   // beetle trail as little voxel blocks
-  for (const t of trail){ t.life *= 0.997; g.fillStyle = degColor(t.deg,55,0.18*t.life); g.fillRect(t.x-3,t.y-3,6,6); }
+  for (const t of trail){ t.life *= 0.997; g.fillStyle = `hsl(${t.hue} 70% 55% / ${0.16*t.life})`; g.fillRect(t.x-3,t.y-3,6,6); }
   // words
   g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const o of words){
@@ -625,13 +662,8 @@ function draw(){
     g.fillStyle = '#1a0d06'; g.font = '600 10px "IBM Plex Mono", monospace';
     g.fillText(NOTE_NAMES[degToMidi(b.deg)%12], b.x, b.y+1);
   }
-  // beetle
-  if (S.beetle){ const B = beetle; g.save(); g.translate(B.x,B.y); g.rotate(B.h);
-    g.fillStyle = '#43d3c9'; g.beginPath(); g.ellipse(0,0,10,7,0,0,Math.PI*2); g.fill();
-    g.fillStyle = '#15131f'; g.fillRect(-10,-0.75,20,1.5); g.beginPath(); g.arc(10,0,3.5,0,Math.PI*2); g.fill();
-    g.strokeStyle = '#43d3c9'; g.lineWidth = 1.5;
-    for (const s of [-1,1]) for (const x of [-5,0,5]){ g.beginPath(); g.moveTo(x,s*6); g.lineTo(x-2,s*11); g.stroke(); }
-    g.restore(); }
+  // bugs
+  if (S.beetle) for (const B of bugs) drawBug(B);
   // synth ball
   for (const ball of balls){ g.fillStyle = degColor(ball.deg,60,ball.alpha); g.beginPath(); g.arc(ball.x,ball.y,ball.r,0,Math.PI*2); g.fill();
     g.fillStyle=`rgba(255,255,255,${0.35*ball.alpha})`; g.beginPath(); g.arc(ball.x-ball.r*0.3,ball.y-ball.r*0.35,ball.r*0.3,0,Math.PI*2); g.fill(); }
@@ -899,6 +931,7 @@ $('#addMols').onclick = () => { for (let i=0;i<20;i++) addMol(); };
 $('#shake').onclick = () => { for (const m of mols){ breakBond(m); m.vx += rnd(-400,400); m.vy += rnd(-400,400); } toast('Shaken. Every bond broke.'); };
 $('#gravity').onclick = () => { S.gravity = !S.gravity; syncUI(); };
 $('#beetleBtn').onclick = () => { S.beetle = !S.beetle; syncUI(); };
+$('#addBug').onclick = () => { S.beetle = true; syncUI(); const b = addBug(); toast(b ? `A ${b.kind==='stag'?'stag beetle':b.kind} crawled in. ${bugs.length} bugs now.` : 'That is 16 bugs, the most the floor can hold.'); };
 $('#ballBtn').onclick = () => { S.ball = !S.ball; syncUI(); };
 $('#laserBtn').onclick = launchShip;
 $('#clearBells').onclick = () => { bells.length = 0; updateMeters(); };
@@ -938,7 +971,7 @@ const CREDITS = [
   ['wonderkey',null,'Each key grabs a random slice of the sample at one pitch.'],
   ['duet-instrument',null,'Two mirrored rows of seven matching-color pentatonic pads.'],
   ['tone-synth-extension',null,'Synth settings and the bouncing synth balls that drop in now and then.'],
-  ['scratch-extensions','BeetleBlocks','The wandering beetle that leaves blocks and lays bells.'],
+  ['scratch-extensions','BeetleBlocks','A swarm of beetles, ladybugs, fireflies and stag beetles that leave blocks and lay bells.'],
   ['color-key',null,'Colors become chords; K samples the color under the cursor.'],
   ['user-count-extension',null,'The live "bonded right now" counter, and a rare squirrel airhorn on big milestones.'],
   ['spotify-extension',null,'Its example projects were cowbell remixes, hence More cowbell.'],
@@ -962,6 +995,7 @@ for (const [name, alt, what] of CREDITS){
 
 /* ---------------- boot ---------------- */
 buildPads(); buildSteps(); syncUI(); updateMeters();
+['beetle','beetle','ladybug','ladybug','firefly','firefly','stag'].forEach(k => addBug(k));
 for (let i=0;i<(reduced?60:130);i++) addMol();
 [[0.25,0.3],[0.5,0.55],[0.7,0.25],[0.35,0.75],[0.62,0.8]].forEach(([fx,fy]) => addBell(W*fx, H*fy));
 addWords('makey makey sampling synth musical instrument built for two scratch blocks cowbell molecules assemble melody morph wonder key', false);
