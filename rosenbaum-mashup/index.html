@@ -464,7 +464,7 @@ function step(dt){
   }
   gravTimer -= dt;
   if (gravTimer < 0){ S.gravity = !S.gravity; gravTimer = S.gravity ? rnd(3,7) : rnd(6,13); syncUI(); if (live()) toast(S.gravity ? 'Gravity on. Everything falls.' : 'Gravity off. Back to floating.'); }
-  stepBeetle(dt, now); stepBall(dt, now); stepShip(dt); stepWords(dt);
+  stepBeetle(dt, now); stepBall(dt, now); stepSparks(dt); stepShip(dt); stepWords(dt);
 }
 
 /* ---------------- bells (MelodyMorph) ---------------- */
@@ -557,6 +557,37 @@ function stepBall(dt, now){
   }
 }
 
+/* ---------------- explosions ---------------- */
+const sparks = [];
+let lastBoom = 0;
+function explode(i){
+  const m = mols[i];
+  breakBond(m); if (m.minus) breakBond(m.minus);
+  mols.splice(i,1);
+  for (let k=0;k<16;k++){ const a = rnd(Math.PI*2), v = rnd(60,260);
+    sparks.push({x:m.x,y:m.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,deg:m.deg,sz:rnd(1.5,4)}); }
+  if (sparks.length > 700) sparks.splice(0, sparks.length-700);
+  for (const o of mols){ const dx=o.x-m.x, dy=o.y-m.y, d=Math.hypot(dx,dy); if (d<60&&d>0){ o.vx+=dx/d*(60-d)*6; o.vy+=dy/d*(60-d)*6; } }
+  ripple(m.x,m.y,m.deg,1.8);
+  const now = performance.now();
+  if (live() && now-lastBoom > 90){ lastBoom = now; boom((m.x/W)*2-1); }
+  // a fresh molecule drifts in from an edge a few seconds later
+  setTimeout(() => { const e = Math.floor(rnd(4)); addMol(e===0?10:e===1?W-10:rnd(W), e===2?10:e===3?H-10:rnd(H)); }, rnd(1500,4500));
+}
+function stepSparks(dt){
+  for (let i=sparks.length-1;i>=0;i--){ const p = sparks[i];
+    p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= 0.94; p.vy *= 0.94; p.life -= dt*1.6;
+    if (p.life <= 0) sparks.splice(i,1); }
+}
+function boom(pan=0){
+  const t = AC.currentTime;
+  noise(t,{type:'lowpass',freq:900,q:0.5,vol:0.2,dur:0.28,pan});
+  const o = AC.createOscillator(), gg = AC.createGain();
+  o.frequency.setValueAtTime(110,t); o.frequency.exponentialRampToValueAtTime(38,t+0.2);
+  gg.gain.setValueAtTime(0.22,t); gg.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
+  o.connect(gg); out(gg,pan,false); o.start(t); o.stop(t+0.27);
+}
+
 /* ---------------- laser ship (Space-battle) ---------------- */
 function launchShip(){
   const fromLeft = Math.random()<0.5;
@@ -571,10 +602,8 @@ function stepShip(dt){
 function stepOneShip(ship, si, dt){
   ship.x += ship.vx*dt; ship.fire -= dt;
   if (ship.fire < 0){ ship.fire = 0.26; pew((ship.x/W)*2-1); }
-  for (const m of mols){
-    if (Math.abs(m.y-ship.y) < 14 && Math.sign(m.x-ship.x) === Math.sign(ship.vx) && Math.abs(m.x-ship.x) < 200){
-      breakBond(m); if (m.minus) breakBond(m.minus); m.vy += (m.y<ship.y?-1:1)*300*dt*10; m.glow = 1;
-    }
+  for (let i=mols.length-1;i>=0;i--){ const m = mols[i];
+    if (Math.abs(m.y-ship.y) < 14 && Math.sign(m.x-ship.x) === Math.sign(ship.vx) && Math.abs(m.x-ship.x) < 200) explode(i);
   }
   if (ship.x < -60 || ship.x > W+60) ships.splice(si,1);
 }
@@ -654,6 +683,8 @@ function draw(){
     g.fillStyle = m.minus ? '#f3ecdd' : '#43d3c9'; g.fillRect(-HALF-1,-1.5,3,3);
     g.restore();
   }
+  // explosion sparks
+  for (const p of sparks){ g.fillStyle = degColor(p.deg, 60 + p.life*30, p.life); g.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz); }
   // bells
   for (const b of bells){
     b.ring *= 0.92; const r = b.r + b.ring*6;
@@ -979,7 +1010,7 @@ const CREDITS = [
   ['makeymakey-midi',null,'Every note can go out over MIDI.'],
   ['makeymakey-capsense-keyboard',null,'Hovering a bell rings it, no click needed (touch without ground).'],
   ['list-app','do-today','The Do today checklist.'],
-  ['Space-battle',null,'The laser ship that breaks bonds.'],
+  ['Space-battle',null,'Laser ships that blow up molecules in their path (new ones drift back in).'],
   ['Transmogrifier',null,'One button that remixes every setting at once.'],
   ['together-apart',null,'The duet pads, panned hard left and right.'],
   ['scratch-gui-1','scratch-vm-1','Arrow keys and Space, the classic Scratch and Makey Makey inputs.'],

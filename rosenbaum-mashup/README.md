@@ -37,7 +37,7 @@ Press **Start the sound**, then:
 | makeymakey-midi | MIDI out for every note |
 | makeymakey-capsense-keyboard | Hovering a bell rings it (touch without ground) |
 | list-app, do-today | The "Do today" checklist (checking one off spawns molecules) |
-| Space-battle | Laser ships that fly by every several seconds and break bonds |
+| Space-battle | Laser ships that fly by every several seconds and blow up molecules in their path |
 | Transmogrifier | One button that remixes every setting |
 | wordcloud (this repo) | Typed/spoken words float in and grow with repetition |
 
