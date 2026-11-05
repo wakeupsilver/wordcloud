@@ -343,7 +343,7 @@ function pew(pan=0){
   if (!live()) return;
   const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
   o.type='square'; o.frequency.setValueAtTime(1900,t); o.frequency.exponentialRampToValueAtTime(110,t+0.22);
-  g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.24);
+  g.gain.setValueAtTime(0.07,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.24);
   o.connect(g); out(g,pan); o.start(t); o.stop(t+0.25);
 }
 
@@ -376,7 +376,9 @@ function resize(){
 new ResizeObserver(resize).observe(cvs); resize();
 
 const mols = [], bells = [], words = [], ripples = [], trail = [];
-let beetle = {x:120,y:120,h:0.4,drop:6}, ball = null, bgTint = 250;
+let beetle = {x:120,y:120,h:0.4,drop:6}, bgTint = 250;
+const balls = [];
+let ballTimer = 5;
 const ships = [];
 let shipTimer = 2.5, gravTimer = 8;
 const HALF = 11; // half-length of a wedge
@@ -487,19 +489,32 @@ function stepBeetle(dt, now){
 }
 
 /* ---------------- bouncing synth ball (tone-synth) ---------------- */
+function newBall(permanent){
+  const fromLeft = Math.random()<0.5;
+  return {x: permanent ? W*0.3 : rnd(40,Math.max(41,W-40)), y: permanent ? 40 : -24, vx:(fromLeft?1:-1)*rnd(90,200), vy:0,
+    r: permanent ? 20 : rnd(12,22), deg: Math.floor(rnd(10)), permanent, life: permanent ? Infinity : rnd(9,16), alpha:1};
+}
 function stepBall(dt, now){
-  if (!S.ball){ ball = null; return; }
-  if (!ball) ball = {x:W*0.3,y:40,vx:150,vy:0,r:20,deg:0};
-  ball.vy += 700*dt; ball.x += ball.vx*dt; ball.y += ball.vy*dt;
-  if (ball.x<ball.r||ball.x>W-ball.r){ ball.vx*=-1; ball.x=clamp(ball.x,ball.r,W-ball.r); }
-  if (ball.y > H-ball.r){
-    ball.y = H-ball.r; ball.vy = -Math.max(380, Math.abs(ball.vy)*0.92);
-    ball.deg = Math.floor((ball.x/W)*10);
-    playNote(degToMidi(ball.deg-5), {vel:0.5, dur:0.25, wave:'sawtooth', pan:(ball.x/W)*2-1});
-    ripple(ball.x,H-4,ball.deg,1.6);
+  // the toggle keeps one permanent ball; others drop in now and then and fade out
+  const perm = balls.findIndex(b => b.permanent);
+  if (S.ball && perm < 0) balls.push(newBall(true));
+  if (!S.ball && perm >= 0) balls.splice(perm,1);
+  ballTimer -= dt;
+  if (ballTimer < 0){ ballTimer = rnd(6,14); if (balls.length < 6){ balls.push(newBall(false)); if (Math.random()<0.25) balls.push(newBall(false)); } }
+  for (let i=balls.length-1;i>=0;i--){ const ball = balls[i];
+    ball.life -= dt; if (ball.life < 1.5) ball.alpha = Math.max(0, ball.life/1.5);
+    if (ball.life <= 0){ balls.splice(i,1); continue; }
+    ball.vy += 700*dt; ball.x += ball.vx*dt; ball.y += ball.vy*dt;
+    if (ball.x<ball.r||ball.x>W-ball.r){ ball.vx*=-1; ball.x=clamp(ball.x,ball.r,W-ball.r); }
+    if (ball.y > H-ball.r){
+      ball.y = H-ball.r; ball.vy = -Math.max(380, Math.abs(ball.vy)*0.92);
+      ball.deg = Math.floor((ball.x/W)*10);
+      playNote(degToMidi(ball.deg-5), {vel:0.45*ball.alpha*(ball.permanent?1:0.8), dur:0.25, wave:'sawtooth', pan:(ball.x/W)*2-1});
+      ripple(ball.x,H-4,ball.deg,1.6);
+    }
+    for (const m of mols){ const dx=m.x-ball.x, dy=m.y-ball.y, d=Math.hypot(dx,dy); if (d<ball.r+8&&d>0){ m.vx+=dx/d*260; m.vy+=dy/d*260; } }
+    const hit = bellAt(ball.x,ball.y); if (hit && now-hit.last>250) ringBell(hit,0.6*ball.alpha);
   }
-  for (const m of mols){ const dx=m.x-ball.x, dy=m.y-ball.y, d=Math.hypot(dx,dy); if (d<ball.r+8&&d>0){ m.vx+=dx/d*260; m.vy+=dy/d*260; } }
-  const hit = bellAt(ball.x,ball.y); if (hit && now-hit.last>250) ringBell(hit,0.6);
 }
 
 /* ---------------- laser ship (Space-battle) ---------------- */
@@ -510,12 +525,12 @@ function launchShip(){
 }
 function stepShip(dt){
   shipTimer -= dt;
-  if (shipTimer < 0){ shipTimer = rnd(2.5,6); launchShip(); if (Math.random()<0.3) setTimeout(launchShip, 400); }
+  if (shipTimer < 0){ shipTimer = rnd(4,9); launchShip(); if (Math.random()<0.2) setTimeout(launchShip, 400); }
   for (let si=ships.length-1; si>=0; si--) stepOneShip(ships[si], si, dt);
 }
 function stepOneShip(ship, si, dt){
   ship.x += ship.vx*dt; ship.fire -= dt;
-  if (ship.fire < 0){ ship.fire = 0.18; pew((ship.x/W)*2-1); }
+  if (ship.fire < 0){ ship.fire = 0.26; pew((ship.x/W)*2-1); }
   for (const m of mols){
     if (Math.abs(m.y-ship.y) < 14 && Math.sign(m.x-ship.x) === Math.sign(ship.vx) && Math.abs(m.x-ship.x) < 200){
       breakBond(m); if (m.minus) breakBond(m.minus); m.vy += (m.y<ship.y?-1:1)*300*dt*10; m.glow = 1;
@@ -615,8 +630,8 @@ function draw(){
     for (const s of [-1,1]) for (const x of [-5,0,5]){ g.beginPath(); g.moveTo(x,s*6); g.lineTo(x-2,s*11); g.stroke(); }
     g.restore(); }
   // synth ball
-  if (ball){ g.fillStyle = degColor(ball.deg,60); g.beginPath(); g.arc(ball.x,ball.y,ball.r,0,Math.PI*2); g.fill();
-    g.fillStyle='rgba(255,255,255,0.35)'; g.beginPath(); g.arc(ball.x-6,ball.y-7,6,0,Math.PI*2); g.fill(); }
+  for (const ball of balls){ g.fillStyle = degColor(ball.deg,60,ball.alpha); g.beginPath(); g.arc(ball.x,ball.y,ball.r,0,Math.PI*2); g.fill();
+    g.fillStyle=`rgba(255,255,255,${0.35*ball.alpha})`; g.beginPath(); g.arc(ball.x-ball.r*0.3,ball.y-ball.r*0.35,ball.r*0.3,0,Math.PI*2); g.fill(); }
   // ship + laser
   for (const ship of ships){ const dir = Math.sign(ship.vx);
     g.strokeStyle = 'rgba(255,106,61,0.85)'; g.lineWidth = 3; g.beginPath(); g.moveTo(ship.x+dir*16,ship.y); g.lineTo(ship.x+dir*200,ship.y); g.stroke();
@@ -916,7 +931,7 @@ const CREDITS = [
   ['MK-1',null,'The 2-second sampler and its waveform strip.'],
   ['wonderkey',null,'Each key grabs a random slice of the sample at one pitch.'],
   ['duet-instrument',null,'Two mirrored rows of seven matching-color pentatonic pads.'],
-  ['tone-synth-extension',null,'Synth settings and the bouncing synth ball.'],
+  ['tone-synth-extension',null,'Synth settings and the bouncing synth balls that drop in now and then.'],
   ['scratch-extensions','BeetleBlocks','The wandering beetle that leaves blocks and lays bells.'],
   ['color-key',null,'Colors become chords; K samples the color under the cursor.'],
   ['user-count-extension',null,'The live "bonded right now" counter, and a rare squirrel airhorn on big milestones.'],

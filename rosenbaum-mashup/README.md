@@ -28,7 +28,7 @@ Press **Start the sound**, then:
 | MK-1 | 2-second sampler with a waveform strip |
 | wonderkey | Each key triggers a random slice of the sample at one pitch |
 | duet-instrument, together-apart | Two mirrored rows of seven pentatonic pads, panned left/right |
-| tone-synth-extension | Synth settings + the bouncing synth ball |
+| tone-synth-extension | Synth settings + bouncing synth balls that drop in now and then |
 | scratch-extensions (BeetleBlocks) | An always-on wandering beetle that leaves blocks and lays bells |
 | color-key | Colors → chords |
 | user-count-extension | "Bonded right now" counter + a rare airhorn on big bond milestones |
@@ -37,7 +37,7 @@ Press **Start the sound**, then:
 | makeymakey-midi | MIDI out for every note |
 | makeymakey-capsense-keyboard | Hovering a bell rings it (touch without ground) |
 | list-app, do-today | The "Do today" checklist (checking one off spawns molecules) |
-| Space-battle | Laser ships that fly by every few seconds and break bonds |
+| Space-battle | Laser ships that fly by every several seconds and break bonds |
 | Transmogrifier | One button that remixes every setting |
 | wordcloud (this repo) | Typed/spoken words float in and grow with repetition |
 
