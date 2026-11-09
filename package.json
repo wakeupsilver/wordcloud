@@ -1,0 +1,21 @@
+{
+  "name": "wordcloud",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "watch": "parcel watch index.html --public-url ./ --out-dir ./dist",
+    "build": "parcel build index.html --public-url ./ --out-dir ./dist",
+    "start": "http-server ./dist"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "choo": "^7.1.0",
+    "http-server": "^0.12.3"
+  },
+  "devDependencies": {
+    "less": "^4.1.0",
+    "parcel-bundler": "^1.12.4"
+  }
+}

@@ -1,0 +1,154 @@
+:root {
+  font-size: 1.2vw;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-size: 1rem;
+  background: #eee;
+  color: #333;
+  font-family: 'Roboto Slab', serif;
+  width: 80vw;
+  margin: 0 auto;
+}
+
+input[type="text"],
+button {
+  cursor: pointer;
+  font-size: 1rem;
+  border: none;
+  outline: none;
+  margin: 1rem 0;
+  padding: 1rem;
+}
+
+button {
+  background: #ddd;
+}
+.menu-button {
+  background: none;
+  border-radius: 2em;
+  padding: 0;
+  margin: 0;
+  width: 2em;
+  height: 2em;
+  transition: all 0.2s;
+  &:hover {
+    background: #ccc;
+  }
+}
+
+.menu {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  button {
+    .menu-button();
+  }
+}
+
+.fullscreen {
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.hidden {
+  display: none;
+}
+.open {
+  display: flex-block;
+}
+
+.word-cloud {
+  font-size: 30rem;
+  z-index: 0;
+  width: 60%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+
+  span {
+    padding: 0.5rem;
+    transition: all 0.5s;
+  }
+}
+
+.video-controls {
+  button {
+    width: 20%;
+  }
+  input[type="text"] {
+    width: 80%;
+  }
+}
+
+.video-player {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  iframe {
+    width: 100%;
+  }
+}
+
+
+.stop-words {
+  #word-form {
+    input[type="text"] {
+      width: 80%;
+    }
+    button {
+      width: 20%;
+    }
+  }
+  ul {
+    padding: 0;
+    margin: 0;
+    height: 8rem;
+    overflow-y: scroll;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    list-style: none;
+    li {
+      padding: 0.5rem 1rem;
+      background: #ddd;
+      margin: 0.5rem;
+      border-radius: 1rem;
+      button {
+        margin-left: 0.5rem;
+        font-size: 0.8rem;
+        padding: 0;
+        color: #aaa;
+      }
+    }
+  }
+}
+
+.text {
+  padding: 1em 0;
+}
+
+.speech-to-text {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translate(-50%, 0);
+  button {
+    .menu-button()
+  }
+}
